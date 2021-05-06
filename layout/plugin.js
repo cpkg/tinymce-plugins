@@ -1,37 +1,42 @@
-/**
- * layout 1.5v  2020-01-14
+
+ /**
+ * layout 1.6v  2021-03-30
  * The tinymce-plugins is used to set up a layout
  * 
  * https://github.com/Five-great/tinymce-plugins
  * 
- * Copyright 2020, Five(Li Hailong) The Chengdu, China https://fivecc.cn/
+ * Copyright 2021, Five(Li Hailong) The Chengdu, China https://fivecc.cn/
  *
  * Licensed under MIT
  */
 tinymce.PluginManager.add('layout', function(editor, url) {
     var pluginName='一键布局';
     var global$1 = tinymce.util.Tools.resolve('tinymce.util.Tools');
-    var layout_opt = editor.getParam('layout_options', {clearStyle:[],filterTags:['table>*'],style:{'text-align':'justify','text-indent':'2em','line-height': 1.5},tagsStyle:{}});
+    var layout_opt = editor.getParam('layout_options', {selection: 'p,table,tr,td,h1,h2,h3,h4,h5,h6,ul,blockquote' ,learStyle:[],filterTags:['table>*'],style:{'text-align':'justify','text-indent':'2em','line-height': 1.5},tagsStyle:{}});
     var layout_filterTags={};
     var layout_filterTagsRegex={};
     for( let key in layout_opt.filterTags){layout_opt.filterTags[key].indexOf('>*')!=-1?layout_filterTagsRegex[layout_opt.filterTags[key].replace('>*','').toUpperCase()]=true :layout_filterTags[layout_opt.filterTags[key].toUpperCase()]=true;}
     for( let key in layout_opt.tagsStyle){
         let ckeyList = key.split(',');
+        layout_opt.selection += ','+key;
         for(let ckey in ckeyList)ckeyList[ckey].indexOf('>*')!=-1?layout_filterTagsRegex[ckeyList[ckey].replace('>*','').toUpperCase()]=key :layout_filterTags[ckeyList[ckey].toUpperCase()]=key;
     }
     var doAct = function () {
         var dom = editor.dom;
         editor.execCommand('selectAll');
-        var blocks = editor.selection.getSelectedBlocks()
+        layout_opt.selection = layout_opt.selection || 'p,table,tr,td,h1,h2,h3,h4,h5,h6,ul,blockquote';
+        for( let key in layout_opt.tagsStyle) {layout_opt.selection += ','+key;}
+        blocks= editor.selection.getNode().querySelectorAll(layout_opt.selection)
         function _indent2$getValue( key, str ) { 
             var m = str.match( new RegExp(key + ':?(.+?)"?[;}]') );
             return m ? m[ 1 ] : false;
         }
-        function filterFun(el) {
+        function filterFun(el,_r) {
             let parentSelector = 'BODY';
             let parents = el.tagName;
             if(layout_filterTags[parents] || layout_filterTagsRegex[parents]) {
-                !layout_opt.tagsStyle[layout_filterTags[parents]]?'': setStyleFun(el,layout_opt.tagsStyle[layout_filterTags[parents]])
+                
+                !layout_opt.tagsStyle[layout_filterTags[parents]] || _r ?_r ? removeStyleFun(el,layout_opt.tagsStyle[layout_filterTags[parents]]) :'': setStyleFun(el,layout_opt.tagsStyle[layout_filterTags[parents]])
                 return true;
             }
             let _p = el.parentNode;
@@ -40,8 +45,8 @@ tinymce.PluginManager.add('layout', function(editor, url) {
                 let o = _p;
                 parents = _pName + '>' + parents;
                 if(layout_filterTags[parents] || layout_filterTagsRegex[_pName]) {
-                    !layout_opt.tagsStyle[layout_filterTagsRegex[_pName]]?'': setStyleFun(el,layout_opt.tagsStyle[layout_filterTagsRegex[_pName]])
-                    !layout_opt.tagsStyle[layout_filterTags[parents]]?'': setStyleFun(el,layout_opt.tagsStyle[layout_filterTags[parents]])
+                    !layout_opt.tagsStyle[layout_filterTagsRegex[_pName]] || _r ? _r ? removeStyleFun(el,layout_opt.tagsStyle[layout_filterTagsRegex[_pName]]) :'' : setStyleFun(el,layout_opt.tagsStyle[layout_filterTagsRegex[_pName]])
+                    !layout_opt.tagsStyle[layout_filterTags[parents]] || _r ? _r ? removeStyleFun(el,layout_opt.tagsStyle[layout_filterTags[parents]]) :'': setStyleFun(el,layout_opt.tagsStyle[layout_filterTags[parents]])
                     return true;
                 }
                 _p = o.parentNode;
@@ -57,9 +62,9 @@ tinymce.PluginManager.add('layout', function(editor, url) {
                 }
                 dom.setAttrib(_block,'style',style);
         }
-        function removeStyleFun(_block){
+        function removeStyleFun(_block,_style){
             let style=dom.getAttrib(_block,'style');
-            for(let key in layout_opt.style){
+            for(let key in _style){
             let reg = new RegExp(key + ':?(.+?)"?[;}]') 
             style = style.replace(reg, '');
             }
@@ -82,12 +87,13 @@ tinymce.PluginManager.add('layout', function(editor, url) {
         }
         var layoutAct = '';
         global$1.each(blocks, function (block) {
+          
                 if(layoutAct==''){if(dom.hasClass(block,'layoutFV')){layoutAct =  'remove'; dom.removeClass(block,'layoutFV')}else{ layoutAct =  'add'; dom.addClass(block,'layoutFV')}}
                 if( layoutAct =='add'){
                     !filterFun(block)?setStyleFun(block,layout_opt.style):'';
                     layout_opt.clearStyle?clearStyleFun(block):'';
                 }else{
-                    !filterFun(block)?removeStyleFun(block,layout_opt.style):'';
+                    !filterFun(block,'remove')?removeStyleFun(block,layout_opt.style):'';
                 }
         });
     };
